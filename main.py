@@ -1,15 +1,16 @@
 import cv2
 import numpy as np
-import time
-import imutils
-from imutils.video import FPS
+from scipy.spatial import distance
 import dlib
 
 # 모델 로드
 detect = './detect/'
 prototxt = detect + 'deploy.prototxt'
 resnet = detect + 'res10_300x300_ssd_iter_140000.caffemodel'
-model = cv2.dnn.readNet(resnet, prototxt)
+face_model = cv2.dnn.readNet(resnet, prototxt)
+
+landmark = detect + 'shape_predictor_68_face_landmarks.dat'
+predictor = dlib.shape_predictor(landmark)
 
 # 카메라 로드 (웹캠)
 cam = cv2.VideoCapture(0)
@@ -17,8 +18,14 @@ cam = cv2.VideoCapture(0)
 # 최소 인식률
 minimum_confidence = 0.5
 
-# 프레임 설정
-fps = FPS().start()
+
+# 눈 감은 정도 확인 함수
+def ear(eyes):
+    a = distance.euclidean(eyes[1], eyes[5])
+    b = distance.euclidean(eyes[2], eyes[4])
+    c = distance.euclidean(eyes[0], eyes[3])
+    eye_aspect_ratio = (a + b) / (2.0 * c)
+    return eye_aspect_ratio
 
 
 while True:
@@ -31,8 +38,8 @@ while True:
     # 얼굴 먼저 인식
     h, w = frame.shape[:2]
     blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 117.0, 124.0))
-    model.setInput(blob)
-    detections = model.forward()
+    face_model.setInput(blob)
+    detections = face_model.forward()
     faces = []
 
     for i in range(0, detections.shape[2]):
@@ -47,6 +54,27 @@ while True:
             end_x, end_y = min(w - 1, end_x), min(h - 1, end_y)
 
             cv2.rectangle(frame, (start_x, start_y), (end_x, end_y), (0, 255, 0), 2)
+
+    # 얼굴 인식 후 랜드마크로 눈 인식
+    for face in faces:
+        face_landmark = predictor(frame, face)
+
+        left_eyes = []
+        for left in range(36, 42):  # parts : 전체 구하기 / part(n) : n 부분 구하기
+            left_eyes.append([face_landmark.part(left).x, face_landmark.part(left).y])
+
+        right_eyes = []
+        for right in range(42, 48):
+            right_eyes.append([face_landmark.part(right).x, face_landmark.part(right).y])
+
+        for i in range(6):
+            cv2.circle(frame, (left_eyes[i][0], left_eyes[i][1]), 2, (255, 0, 0))
+            cv2.circle(frame, (right_eyes[i][0], right_eyes[i][1]), 2, (255, 0, 0))
+
+        left_eye, right_eye = ear(left_eyes), ear(right_eyes)
+        if left_eye < 0.145 and right_eye < 0.145:
+            print(f'left eye : {left_eye}')
+            print(f'right eye : {right_eye}')
 
     cv2.imshow('test', frame)
 
