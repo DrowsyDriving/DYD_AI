@@ -1,7 +1,9 @@
 import cv2
+import dlib
+import time
 import numpy as np
 from scipy.spatial import distance
-import dlib
+
 
 # 모델 로드
 detect = './detect/'
@@ -17,6 +19,11 @@ cam = cv2.VideoCapture(0)
 
 # 최소 인식률
 minimum_confidence = 0.5
+
+# 시간 측정 변수
+check_time = None
+closed_eye = False
+total = 0
 
 
 # 눈 감은 정도 확인 함수
@@ -71,10 +78,20 @@ while True:
             cv2.circle(frame, (left_eyes[i][0], left_eyes[i][1]), 2, (255, 0, 0))
             cv2.circle(frame, (right_eyes[i][0], right_eyes[i][1]), 2, (255, 0, 0))
 
+        # 눈 감은 정도를 이용해서 시간을 측정
+        if closed_eye:
+            total += time.time() - check_time
+            if total >= 0.65:
+                print(1)
+        else:
+            total = 0
+
         left_eye, right_eye = ear(left_eyes), ear(right_eyes)
-        if left_eye < 0.145 and right_eye < 0.145:
-            print(f'left eye : {left_eye}')
-            print(f'right eye : {right_eye}')
+        if left_eye < 0.15 and right_eye < 0.15:
+            closed_eye = True
+            check_time = time.time()
+        else:
+            closed_eye = False
 
     cv2.imshow('test', frame)
 
