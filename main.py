@@ -57,7 +57,7 @@ while True:
             faces.append(dlib.rectangle(start_x, start_y, end_x, end_y))
 
             # 얼굴 바인딩 박스
-            cv2.rectangle(frame, (start_x, start_y), (end_x, end_y), (0, 255, 0), 2)
+            # cv2.rectangle(frame, (start_x, start_y), (end_x, end_y), (0, 255, 0), 2)
 
             start_x, start_y = max(0, start_x), max(0, start_y)
             end_x, end_y = min(w - 1, end_x), min(h - 1, end_y)
